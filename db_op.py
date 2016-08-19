@@ -1,6 +1,8 @@
 from tornado import gen, web, ioloop, queues, httpclient
 import tormysql
 import logging
+import json
+from datetime import datetime
 
 class DB:
     database = None
@@ -42,6 +44,7 @@ class DB:
             param params: actual query parameters
             return: None
         """
+        print(datetime.now())
         print("DB_SEND: "+query)
         print("INPUT: "+str(params))
         with (yield self.pool.Connection()) as conn:
@@ -62,6 +65,7 @@ class DB:
             param dry_output: (bool) switch output style
             return: If dry_output True - output tuple of tuples, otherwise list of dicts
         """
+        print(datetime.now())
         print("DB_GET: "+query)
         print("INPUT: "+str(params))
         with (yield self.pool.Connection()) as conn:
@@ -116,8 +120,15 @@ class DB_OP_Dorm:
         return data
 
     def find_uid(self, method, oid="", **params):
+        if method == "d2":
+            data = json.loads(oid)
+            account = data['username']
+        elif method == "fb":
+            account = oid
+        else:
+            account = oid
         data = yield self.db.get(
-            "SELECT uid FROM student where type = %s AND account = %s", (method, oid,)
+            "SELECT uid FROM student where type = %s AND account = %s", (method, account,)
         )
         try:
             return data[0]['uid']
@@ -125,9 +136,23 @@ class DB_OP_Dorm:
             return -1
 
     def add_uid(self, method, oid="", **params):
-        yield self.db.send(
-            "INSERT INTO student (type, account, student_name) VALUES (%s, %s, %s)", (method, oid, oid,)
-        )
+        if method == "d2":
+            data = json.loads(oid)
+            student_id = data['username']
+            if "@" in data['d2_email']:
+                student_name = data['d2_email'].split("@")[0]
+            else:
+                student_name = data['username']
+            email = data['d2_email']
+            yield self.db.send(
+                "INSERT INTO student (type, account, account_detail, student_name, student_id, email) VALUES (%s, %s, %s, %s, %s, %s)", ("d2", student_id, oid, student_name, student_id, email)
+            )
+        elif method == "fb":
+            yield self.db.send(
+                "INSERT INTO student (type, account, account_detail, student_name, facebook_id) VALUES (%s, %s, %s, %s, %s)", ("fb", oid, oid, oid, oid)
+            )
+        else:
+            return
 
     def check_uid_enabled(self, uid, **params):
         data = yield self.db.get(

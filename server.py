@@ -36,6 +36,9 @@ if __name__ == '__main__':
         ('/user/myinfo/', ListMyInfoHandler, args),
         ('/user/myinfo/modify/', ModifyMyInfoHandler, args),
         ('/user/info/?(?P<uid>[0-9]+)?/', ListUserInfoHandler, args),
+        # Bot
+        ('/webhook/', BotHandler, args),
+        ('/connect/', ConnectHandler, args),
         # Static
         ('/static/(.*)', tornado.web.StaticFileHandler, {'path': './static'}),
     ], debug=True)

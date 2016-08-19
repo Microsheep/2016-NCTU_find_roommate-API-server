@@ -9,8 +9,8 @@ from datetime import datetime
 from utils.JwtToken import JwtToken
 from utils.json_decoder import DatetimeEncoder
 from utils.permission import auth_login, refresh_token
+from utils.bot import get_msg, connect
 
-OAUTH_URL = "http://id.nctu.edu.tw/o/authorize/?client_id="+c.OAUTH_CLIENT_ID+"&scope=get_username&response_type=code"
 
 class BaseHandler(tornado.web.RequestHandler):
     def __init__(self, *args, **kwarg):
@@ -66,8 +66,8 @@ class BaseHandler(tornado.web.RequestHandler):
 class GetOAuthLoginUrlHandler(BaseHandler):
     @gen.coroutine
     def get(self, **params):
-        self.res['data'] = OAUTH_URL
-        self.write_json()
+        OAUTH_URL = "http://id.nctu.edu.tw/o/authorize/?client_id="+c.OAUTH_CLIENT_ID+"&scope=profile&response_type=code"
+        self.redirect(OAUTH_URL)
 
 
 class ReturnFromOAuthHandler(BaseHandler):
@@ -86,7 +86,7 @@ class ReturnFromOAuthHandler(BaseHandler):
         connect_return = yield connect_out.fetch(r_req)
         connect_res = json.loads(connect_return.body.decode())
 
-        r_url = "https://id.nctu.edu.tw/o/username/"
+        r_url = "https://id.nctu.edu.tw/api/profile/"
         r_header = {
             "Authorization": ("Bearer "+connect_res['access_token'])
         }
@@ -107,13 +107,7 @@ class ReturnFromOAuthHandler(BaseHandler):
 class GetFBLoginUrlHandler(BaseHandler):
     @gen.coroutine
     def get(self, **params):
-        STUB_FB_ID = "123456789"
-        TIME_UNUSED = 3*60
-        t = int(time.time()) + TIME_UNUSED
-        j = JwtToken().generate({"fbid": STUB_FB_ID, "time": t}).decode("utf-8")
-        self.res['data'] = c.ROOT_URL+'/fb/?token='+j
-        # self.write_json()
-        self.redirect(self.res['data'])
+        self.redirect("https://www.facebook.com/ncturoommate/")
 
 
 class ReturnFromFBHandler(BaseHandler):
@@ -162,8 +156,8 @@ class ReturnFromFBHandler(BaseHandler):
         TIME_UNUSED = 5*60*60
         t = int(time.time()) + TIME_UNUSED
         j = JwtToken().generate({"uid": uid, "type": "fb", "time": t}).decode("utf-8")
-        self.redirect(c.HOME_URL+"?token="+j)
-
+        # self.redirect(c.HOME_URL+"?token="+j)
+        self.redirect("https://stunion.nctu.edu.tw/blog/")
 
 class ListAllBuildingHandler(BaseHandler):
     @gen.coroutine
@@ -304,4 +298,29 @@ class SearchHandler(BaseHandler):
                 self.res['data'] = yield from self.db_op.search(self.get_method()['type'], False, search_param, **params)
         else:
             self.res['data'] = []
+        self.write_json()
+
+class BotHandler(BaseHandler):
+    @gen.coroutine
+    def get(self, **params):
+        if self.get_argument("hub.mode") == "subscribe" and self.get_argument("hub.verify_token") == c.FB_WEBHOOK_KEY:
+            self.write(self.get_argument("hub.challenge"))
+
+    @tornado.gen.coroutine
+    def post(self, **params):
+        body = json.loads(self.request.body.decode())
+        s_id = body['entry'][0]['messaging'][0]['sender']['id']
+        s_text=""
+        try:
+            s_text = body['entry'][0]['messaging'][0]['message']['text']
+            print(s_text)
+        except:
+            pass
+        print("=== Get message from "+s_id+" ===\n"+s_text+"\n=====  Done  =====")
+        yield from get_msg(s_id, s_text)
+
+class ConnectHandler(BaseHandler):
+    @gen.coroutine
+    def get(self, **params):
+        self.res['data'] = yield from connect()
         self.write_json()
