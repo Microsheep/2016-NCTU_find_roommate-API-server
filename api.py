@@ -24,8 +24,8 @@ class BaseHandler(tornado.web.RequestHandler):
 
     def set_default_headers(self):
         self.set_header("Access-Control-Allow-Origin", "*")
-        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
-        self.set_header("Access-Control-Allow-Methods", "POST, GET")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with, Content-Type")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, PATCH, OPTIONS")
 
     def write_json(self):
         print(str(datetime.now()) + " " + self.request.uri)
@@ -167,6 +167,33 @@ class ListAllBuildingHandler(BaseHandler):
         self.res['data'] = yield from self.db_op.list_all_building(**params)
         self.write_json()
 
+class ListAllFloorHandler(BaseHandler):
+    @gen.coroutine
+    @auth_login
+    @refresh_token
+    def get(self, **params):
+        self.res['data'] = yield from self.db_op.list_all_building(**params)
+        floor = yield from self.db_op.list_all_floor(**params)
+        for f in floor:
+            if 'floor' in self.res['data'][f['building_id']].keys():
+                self.res['data'][f['building_id']]['floor'].append(f['floor'])
+            else:
+                self.res['data'][f['building_id']]['floor'] = [f['floor']]
+        for b in self.res['data']:
+            if 'floor' not in b.keys():
+                b['floor'] = []
+        self.write_json()
+
+class ListAllFloorByBuildingHandler(BaseHandler):
+    @gen.coroutine
+    @auth_login
+    @refresh_token
+    def get(self, building_id, **params):
+        floor = yield from self.db_op.list_floor_by_building_id(building_id, **params)
+        self.res['data'] = []
+        for f in floor:
+            self.res['data'].append(f['floor'])
+        self.write_json()
 
 class ListAllClassHandler(BaseHandler):
     @gen.coroutine
@@ -176,7 +203,6 @@ class ListAllClassHandler(BaseHandler):
         self.res['data'] = yield from self.db_op.list_all_class(**params)
         self.write_json()
 
-
 class ListAllRoomHandler(BaseHandler):
     @gen.coroutine
     @auth_login
@@ -185,6 +211,14 @@ class ListAllRoomHandler(BaseHandler):
         self.res['data'] = yield from self.db_op.list_all_room(**params)
         self.write_json()
 
+
+class ListRoomByRoomIDHandler(BaseHandler):
+    @gen.coroutine
+    @auth_login
+    @refresh_token
+    def get(self, room_id, **params):
+        self.res['data'] = yield from self.db_op.list_all_room_by_room_id(room_id, **params)
+        self.write_json()
 
 class ListALLRoomByBuildingHandler(BaseHandler):
     @gen.coroutine
@@ -218,7 +252,10 @@ class AddRoomHandler(BaseHandler):
         try:
             exist = yield from self.db_op.check_room_exist(self.get_arguments("building_id")[0], self.get_arguments("room_name")[0], **params)
             if exist == -1:
-                yield from self.db_op.add_room(self.get_arguments("building_id")[0], self.get_arguments("room_name")[0], **params)
+                try:
+                    yield from self.db_op.add_room(self.get_arguments("building_id")[0], self.get_arguments("room_name")[0], self.get_arguments("floor")[0], **params)
+                except:
+                    yield from self.db_op.add_room(self.get_arguments("building_id")[0], self.get_arguments("room_name")[0], self.get_arguments("building_id")[0][0], **params)
                 self.res['data'] = yield from self.db_op.check_room_exist(self.get_arguments("building_id")[0], self.get_arguments("room_name")[0], **params)
             else:
                 self.res['data'] = exist
@@ -241,29 +278,38 @@ class ModifyMyInfoHandler(BaseHandler):
     @refresh_token
     def patch(self, **params):
         uid = self.get_method()['uid']
+        try:
+            j = json.loads(self.request.body.decode("utf-8"))
+        except:
+            self.res['data'] = "JSON decode Error!"
+            self.write_json()
         p_normal = ["student_id", "student_nickname", "class_id", "room_id", "email", "facebook_id", "slogan", "detail"]
         p_enable = ["student_id_enable", "student_nickname_enable", "class_id_enable", "room_id_enable", "email_enable", "facebook_id_enable", "slogan_enable", "detail_enable"]
         try:
-            if self.get_arguments("student_name")[0] != "":
-                yield from self.db_op.modify_my_info(uid, "student_name", self.get_arguments("student_name")[0], **params)
+            if j["student_name"] != "":
+                yield from self.db_op.modify_my_info(uid, "student_name", j["student_name"], **params)
         except:
             pass
         for attribute in p_normal:
             try:
-                yield from self.db_op.modify_my_info(uid, attribute, self.get_arguments(attribute)[0], **params)
+                yield from self.db_op.modify_my_info(uid, attribute, j[attribute], **params)
             except:
                 pass
         for attribute in p_enable:
             try:
-                if self.get_arguments(attribute)[0] == "true":
+                if j[attribute] == "true":
                     yield from self.db_op.modify_my_info(uid, attribute, 1, **params)
-                elif self.get_arguments(attribute)[0] == "false":
+                elif j[attribute] == "false":
                     yield from self.db_op.modify_my_info(uid, attribute, 0, **params)
                 else:
                     pass
             except:
                 pass
         self.res['data'] = "Done!"
+        self.write_json()
+
+    def options(self, **params):
+        self.res['data'] = "Options OK!"
         self.write_json()
 
 class ListUserInfoHandler(BaseHandler):

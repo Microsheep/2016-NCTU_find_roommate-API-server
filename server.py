@@ -22,10 +22,13 @@ if __name__ == '__main__':
         ('/fb/', ReturnFromFBHandler, args),
         # Building
         ('/building/list/', ListAllBuildingHandler, args),
+        ('/building/list/floor/', ListAllFloorHandler, args),
+        ('/building/list/floor/?(?P<building_id>[0-9]+)?/', ListAllFloorByBuildingHandler, args),
         # Class
         ('/class/list/', ListAllClassHandler, args),
         # Romm
         ('/room/list/', ListAllRoomHandler, args),
+        ('/room/?(?P<room_id>[0-9]+)?/', ListRoomByRoomIDHandler, args),
         ('/room/list/?(?P<building_id>[0-9]+)?/', ListALLRoomByBuildingHandler, args),
         ('/room/list/?(?P<building_id>[0-9]+)?/?(?P<floor>[0-9]+)?/', ListALLRoomByBuildingFloorHandler, args),
         ('/room/list/user/?(?P<room_id>[0-9]+)?/', ListALLUserByRoomHandler, args),

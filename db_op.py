@@ -169,6 +169,18 @@ class DB_OP_Dorm:
         )
         return data
 
+    def list_all_floor(self, **params):
+        data = yield self.db.get(
+            "SELECT DISTINCT b.building_id, r.floor FROM building b, room r where b.building_id = r.building_id order by building_id, floor ASC", ()
+        )
+        return data
+
+    def list_floor_by_building_id(self, building_id, **params):
+        data = yield self.db.get(
+            "SELECT DISTINCT floor FROM room where building_id = %s order by floor ASC", (building_id,)
+        )
+        return data
+
     def list_all_class(self, **params):
         data = yield self.db.get(
             "SELECT * FROM class ORDER BY class_id ASC", ()
@@ -178,6 +190,12 @@ class DB_OP_Dorm:
     def list_all_room(self, **params):
         data = yield self.db.get(
             "SELECT * FROM room ORDER BY room_id ASC", ()
+        )
+        return data
+
+    def list_all_room_by_room_id(self, room_id, **params):
+        data = yield self.db.get(
+            "SELECT * FROM room WHERE room_id = %s", (room_id,)
         )
         return data
 
@@ -215,9 +233,9 @@ class DB_OP_Dorm:
         else:
             return data[0]['room_id']
 
-    def add_room(self, building_id, room_name, **params):
+    def add_room(self, building_id, room_name, floor, **params):
         yield self.db.send(
-            "INSERT INTO room (room_name, building_id, floor) VALUES (%s, %s, %s)", (room_name, building_id, room_name[0],)
+            "INSERT INTO room (room_name, building_id, floor) VALUES (%s, %s, %s)", (room_name, building_id, floor,)
         )
 
     def list_my_info(self, uid, **params):
