@@ -51,6 +51,8 @@ if __name__ == '__main__':
         # Bot
         ('/webhook/', BotHandler, args),
         ('/connect/', ConnectHandler, args),
+        # Usage info
+        ('/usage/people/', UsagePeopleHandler, args),
         # Static
         ('/static/(.*)', tornado.web.StaticFileHandler, {'path': './static'}),
     ], debug=True)

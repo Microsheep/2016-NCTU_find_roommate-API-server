@@ -538,3 +538,9 @@ class ConnectHandler(BaseHandler):
     def get(self, **params):
         self.res['data'] = yield from connect()
         self.write_json()
+
+class UsagePeopleHandler(BaseHandler):
+    @gen.coroutine
+    def get(self, **params):
+        self.res['data'] = yield from self.db_op.list_usage_people(**params)
+        self.write_json()

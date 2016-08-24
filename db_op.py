@@ -238,6 +238,12 @@ class DB_OP_Dorm:
             "INSERT INTO room (room_name, building_id, floor) VALUES (%s, %s, %s)", (room_name, building_id, floor,)
         )
 
+    def list_usage_people(self, **params):
+        data = yield self.db.get(
+            "SELECT count(*) as count FROM student  WHERE enable = 1", ()
+        )
+        return data
+
     def list_my_info(self, uid, **params):
         data = yield self.db.get(
             "SELECT * FROM student WHERE uid = %s", (uid,)
