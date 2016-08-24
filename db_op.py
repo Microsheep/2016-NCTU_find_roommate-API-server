@@ -270,7 +270,32 @@ class DB_OP_Dorm:
             data = [{}]
         return data[0]
 
-    def search(self, method, fuzzy, param, **params):
+    def search(self, method, search_param, **params):
+        q = ""
+        q_param = ()
+        for p in search_param:
+            if p[0] == "student_name_fuzzy":
+                q = q + " AND student_name like %s"
+                q_param = q_param + ("%"+p[1]+"%",)
+            elif p[0] == "student_name_accurate":
+                q = q + " AND student_name = %s"
+                q_param = q_param + (p[1], )
+            else:
+                q = q + " AND " + p[0] + " = %s"
+                q_param = q_param + (p[1], )
+        if method == "d2":
+            data = yield self.db.get(
+                "SELECT * FROM student WHERE enable = 1" + q, q_param
+            )
+        elif method == "fb":
+            data = yield self.db.get(
+                "SELECT * FROM student WHERE enable = 1 AND type=\'fb\'" + q, q_param
+            )
+        else:
+            data = []
+        return self.hide_disabled_data(data)
+
+    def search_arg(self, method, fuzzy, param, **params):
         q = ""
         q_param = ()
         for p in param:

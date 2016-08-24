@@ -35,6 +35,15 @@ if __name__ == '__main__':
         ('/room/add/', AddRoomHandler, args),
         # Search
         ('/search/', SearchHandler, args),
+        ('/search_arg/', SearchArgHandler, args),
+        ('/search/room/?(?P<building_id>[0-9]+)?/', SearchRoomHandler, args),
+        ('/search/class/?(?P<class_id>[0-9]+)?/', SearchClassHandler, args),
+        ('/search/name/accurate/', SearchNameAccurateHandler, args),
+        ('/search/name/fuzzy/', SearchNameFuzzyHandler, args),
+        ('/search/other/student_id/', SearchStudentIDHandler, args),
+        ('/search/other/student_nickname/', SearchStudentNicknameHandler, args),
+        ('/search/other/email/', SearchEmailHandler, args),
+        ('/search/other/facebook_id/', SearchFacebookIDHandler, args),
         # User
         ('/user/myinfo/', ListMyInfoHandler, args),
         ('/user/myinfo/modify/', ModifyMyInfoHandler, args),

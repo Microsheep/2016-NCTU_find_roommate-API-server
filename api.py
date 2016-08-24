@@ -10,7 +10,7 @@ from utils.JwtToken import JwtToken
 from utils.json_decoder import DatetimeEncoder
 from utils.permission import auth_login, refresh_token
 from utils.bot import get_msg, connect
-
+from utils.sql_check import check_safe
 
 class BaseHandler(tornado.web.RequestHandler):
     def __init__(self, *args, **kwarg):
@@ -283,13 +283,27 @@ class ModifyMyInfoHandler(BaseHandler):
         except:
             self.res['data'] = "JSON decode Error!"
             self.write_json()
-        p_normal = ["student_id", "student_nickname", "class_id", "room_id", "email", "facebook_id", "slogan", "detail"]
+        p_normal = ["student_id", "student_nickname", "class_id", "email", "facebook_id", "slogan", "detail"]
         p_enable = ["student_id_enable", "student_nickname_enable", "class_id_enable", "room_id_enable", "email_enable", "facebook_id_enable", "slogan_enable", "detail_enable"]
+        # Student Name Cannot Be Blank
         try:
             if j["student_name"] != "":
                 yield from self.db_op.modify_my_info(uid, "student_name", j["student_name"], **params)
         except:
             pass
+        # Add room if needed
+        try:
+            exist = yield from self.db_op.check_room_exist(j["room"]["building_id"], j["room"]["room_name"], **params)
+            if exist == -1:
+                try:
+                    yield from self.db_op.add_room(j["room"]["building_id"], j["room"]["room_name"], j["room"]["floor"][0], **params)
+                except:
+                    yield from self.db_op.add_room(j["room"]["building_id"], j["room"]["room_name"], j["room"]["building_id"][0], **params)
+                exist = yield from self.db_op.check_room_exist(j["room"]["building_id"], j["room"]["room_name"], **params)
+            yield from self.db_op.modify_my_info(uid, "room_id", exist, **params)
+        except:
+            pass
+        # Other Attribute
         for attribute in p_normal:
             try:
                 yield from self.db_op.modify_my_info(uid, attribute, j[attribute], **params)
@@ -325,6 +339,160 @@ class SearchHandler(BaseHandler):
     @auth_login
     @refresh_token
     def get(self, **params):
+        self.res['data'] = []
+        self.write_json()
+
+class SearchRoomHandler(BaseHandler):
+    @gen.coroutine
+    @auth_login
+    @refresh_token
+    def get(self, building_id, **params):
+        try:
+            arg = self.get_arguments("arg")[0]
+            if arg.isdigit() and len(arg) <= 5:
+                room_id = yield from self.db_op.check_room_exist(building_id, arg, **params)
+                search_param = [
+                    ("room_id", room_id,)
+                ]
+                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], search_param, **params)
+            else:
+                self.res['data'] = []
+        except:
+            self.res['data'] = []
+        self.write_json()
+
+class SearchClassHandler(BaseHandler):
+    @gen.coroutine
+    @auth_login
+    @refresh_token
+    def get(self, class_id, **params):
+        try:
+            arg = self.get_arguments("arg")[0]
+            if check_safe(arg, 2):
+                search_param = [
+                    ("student_name_fuzzy", arg,),
+                    ("class_id", class_id,)
+                ]
+                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], search_param, **params)
+            else:
+                self.res['data'] = []
+        except:
+            self.res['data'] = []
+        self.write_json()
+
+class SearchNameAccurateHandler(BaseHandler):
+    @gen.coroutine
+    @auth_login
+    @refresh_token
+    def get(self, **params):
+        try:
+            arg = self.get_arguments("arg")[0]
+            if check_safe(arg, 2):
+                search_param = [
+                    ("student_name_accurate", arg,)
+                ]
+                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], search_param, **params)
+            else:
+                self.res['data'] = []
+        except:
+            self.res['data'] = []
+        self.write_json()
+
+class SearchNameFuzzyHandler(BaseHandler):
+    @gen.coroutine
+    @auth_login
+    @refresh_token
+    def get(self, **params):
+        try:
+            arg = self.get_arguments("arg")[0]
+            if check_safe(arg, 2):
+                search_param = [
+                    ("student_name_fuzzy", arg,)
+                ]
+                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], search_param, **params)
+            else:
+                self.res['data'] = []
+        except:
+            self.res['data'] = []
+        self.write_json()
+
+class SearchStudentIDHandler(BaseHandler):
+    @gen.coroutine
+    @auth_login
+    @refresh_token
+    def get(self, **params):
+        try:
+            arg = self.get_arguments("arg")[0]
+            if arg.isdigit() and len(arg) <= 10:
+                search_param = [
+                    ("student_id", arg,)
+                ]
+                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], search_param, **params)
+            else:
+                self.res['data'] = []
+        except:
+            self.res['data'] = []
+        self.write_json()
+
+class SearchStudentNicknameHandler(BaseHandler):
+    @gen.coroutine
+    @auth_login
+    @refresh_token
+    def get(self, **params):
+        try:
+            arg = self.get_arguments("arg")[0]
+            if check_safe(arg, 2):
+                search_param = [
+                    ("student_nickname", arg,)
+                ]
+                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], search_param, **params)
+            else:
+                self.res['data'] = []
+        except:
+            self.res['data'] = []
+        self.write_json()
+
+class SearchEmailHandler(BaseHandler):
+    @gen.coroutine
+    @auth_login
+    @refresh_token
+    def get(self, **params):
+        try:
+            arg = self.get_arguments("arg")[0]
+            if check_safe(arg, 2) and arg.find("@") != -1:
+                search_param = [
+                    ("email", arg,)
+                ]
+                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], search_param, **params)
+            else:
+                self.res['data'] = []
+        except:
+            self.res['data'] = []
+        self.write_json()
+
+class SearchFacebookIDHandler(BaseHandler):
+    @gen.coroutine
+    @auth_login
+    @refresh_token
+    def get(self, **params):
+        try:
+            arg = self.get_arguments("arg")[0]
+            if arg.isdigit() and len(arg) <= 20:
+                search_param = [
+                    ("facebook_id", arg,)
+                ]
+                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], search_param, **params)
+            else:
+                self.res['data'] = []
+        except:
+            self.res['data'] = []
+        self.write_json()
+
+class SearchArgHandler(BaseHandler):
+    @gen.coroutine
+    @auth_login
+    @refresh_token
+    def get(self, **params):
         search_param = []
         possible_param = ["student_id", "student_name", "student_nickname", "class_id", "email", "facebook_id"]
         for param in possible_param:
@@ -339,9 +507,9 @@ class SearchHandler(BaseHandler):
                 fuzzy = False
                 pass
             if fuzzy == "true" and self.get_arguments("student_name") != "":
-                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], True, search_param, **params)
+                self.res['data'] = yield from self.db_op.search_arg(self.get_method()['type'], True, search_param, **params)
             else:
-                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], False, search_param, **params)
+                self.res['data'] = yield from self.db_op.search_arg(self.get_method()['type'], False, search_param, **params)
         else:
             self.res['data'] = []
         self.write_json()
