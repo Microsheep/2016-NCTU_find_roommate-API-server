@@ -298,7 +298,7 @@ class ModifyMyInfoHandler(BaseHandler):
                 try:
                     yield from self.db_op.add_room(j["room"]["building_id"], j["room"]["room_name"], j["room"]["floor"][0], **params)
                 except:
-                    yield from self.db_op.add_room(j["room"]["building_id"], j["room"]["room_name"], j["room"]["building_id"][0], **params)
+                    yield from self.db_op.add_room(j["room"]["building_id"], j["room"]["room_name"], j["room"]["room_name"][0], **params)
                 exist = yield from self.db_op.check_room_exist(j["room"]["building_id"], j["room"]["room_name"], **params)
             yield from self.db_op.modify_my_info(uid, "room_id", exist, **params)
         except:

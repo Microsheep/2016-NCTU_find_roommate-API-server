@@ -88,6 +88,14 @@ class DB_OP_Dorm:
     def __init__(self, db):
         self.db = db
 
+    def log(self, method, uid, route):
+        try:
+            yield self.db.send(
+                "INSERT INTO log (method, uid, route) VALUES (%s, %s, %s)", (method, uid, route,)
+            )
+        except:
+            print("Logging Error!")
+
     def hide_disabled_data(self, u_data):
         data = []
         for user in u_data:
