@@ -103,62 +103,6 @@ class ReturnFromOAuthHandler(BaseHandler):
         j = JwtToken().generate({"uid": uid, "type": "d2", "time": t}).decode("utf-8")
         self.redirect(c.HOME_URL+"?token="+j)
 
-
-class GetFBLoginUrlHandler(BaseHandler):
-    @gen.coroutine
-    def get(self, **params):
-        self.redirect("https://www.facebook.com/ncturoommate/")
-
-
-class ReturnFromFBHandler(BaseHandler):
-    @gen.coroutine
-    def get(self, **params):
-        success = True
-        err = ""
-        fbid = ""
-        try:
-            token = self.get_argument('token')
-        except:
-            token = None
-            success = False
-            err = "Token Not Found"
-        if token:
-            j = JwtToken().validate(token)
-            if len(j.keys()) == 0:
-                success = False
-                err = "Jwt Validation Error"
-            if int(time.time()) > j['time']:
-                success = False
-                err = "Jwt Expired"
-            try:
-                fbid = j['fbid']
-            except:
-                success = False
-                err = "Jwt Validation Error"
-        if not success:
-            self.set_status(401)
-            self.res['error'] = err
-            self.write_json()
-            self.finish()
-            raise HTTPError(401)
-        else:
-            uid = yield from self.db_op.find_uid("fb", fbid, **params)
-            if uid == -1:
-                yield from self.db_op.add_uid("fb", fbid, **params)
-                uid = yield from self.db_op.find_uid("fb", fbid, **params)
-            enable = yield from self.db_op.check_uid_enabled(uid, **params)
-            if enable == 0:
-                self.set_status(401)
-                self.res['error'] = "Data already transfered!"
-                self.write_json()
-                self.finish()
-                raise HTTPError(401)
-        TIME_UNUSED = 5*60*60
-        t = int(time.time()) + TIME_UNUSED
-        j = JwtToken().generate({"uid": uid, "type": "fb", "time": t}).decode("utf-8")
-        # self.redirect(c.HOME_URL+"?token="+j)
-        self.redirect("https://stunion.nctu.edu.tw/blog/")
-
 class ListAllBuildingHandler(BaseHandler):
     @gen.coroutine
     @auth_login
@@ -184,84 +128,12 @@ class ListAllFloorHandler(BaseHandler):
                 b['floor'] = []
         self.write_json()
 
-class ListAllFloorByBuildingHandler(BaseHandler):
-    @gen.coroutine
-    @auth_login
-    @refresh_token
-    def get(self, building_id, **params):
-        floor = yield from self.db_op.list_floor_by_building_id(building_id, **params)
-        self.res['data'] = []
-        for f in floor:
-            self.res['data'].append(f['floor'])
-        self.write_json()
-
 class ListAllClassHandler(BaseHandler):
     @gen.coroutine
     @auth_login
     @refresh_token
     def get(self, **params):
         self.res['data'] = yield from self.db_op.list_all_class(**params)
-        self.write_json()
-
-class ListAllRoomHandler(BaseHandler):
-    @gen.coroutine
-    @auth_login
-    @refresh_token
-    def get(self, **params):
-        self.res['data'] = yield from self.db_op.list_all_room(**params)
-        self.write_json()
-
-
-class ListRoomByRoomIDHandler(BaseHandler):
-    @gen.coroutine
-    @auth_login
-    @refresh_token
-    def get(self, room_id, **params):
-        self.res['data'] = yield from self.db_op.list_all_room_by_room_id(room_id, **params)
-        self.write_json()
-
-class ListALLRoomByBuildingHandler(BaseHandler):
-    @gen.coroutine
-    @auth_login
-    @refresh_token
-    def get(self, building_id, **params):
-        self.res['data'] = yield from self.db_op.list_all_room_by_building(building_id, **params)
-        self.write_json()
-
-class ListALLRoomByBuildingFloorHandler(BaseHandler):
-    @gen.coroutine
-    @auth_login
-    @refresh_token
-    def get(self, building_id, floor, **params):
-        self.res['data'] = yield from self.db_op.list_all_room_by_building_floor(building_id, floor, **params)
-        self.write_json()
-
-class ListALLUserByRoomHandler(BaseHandler):
-    @gen.coroutine
-    @auth_login
-    @refresh_token
-    def get(self, room_id, **params):
-        self.res['data'] = yield from self.db_op.list_all_user_by_room(self.get_method()['type'], room_id, **params)
-        self.write_json()
-
-class AddRoomHandler(BaseHandler):
-    @gen.coroutine
-    @auth_login
-    @refresh_token
-    def post(self, **params):
-        try:
-            exist = yield from self.db_op.check_room_exist(self.get_arguments("building_id")[0], self.get_arguments("room_name")[0], **params)
-            if exist == -1:
-                try:
-                    yield from self.db_op.add_room(self.get_arguments("building_id")[0], self.get_arguments("room_name")[0], self.get_arguments("floor")[0], **params)
-                except:
-                    yield from self.db_op.add_room(self.get_arguments("building_id")[0], self.get_arguments("room_name")[0], self.get_arguments("building_id")[0][0], **params)
-                self.res['data'] = yield from self.db_op.check_room_exist(self.get_arguments("building_id")[0], self.get_arguments("room_name")[0], **params)
-            else:
-                self.res['data'] = exist
-        except:
-            self.res['data'] = "Something went wrong!"
-            pass
         self.write_json()
 
 class ListMyInfoHandler(BaseHandler):
@@ -295,10 +167,7 @@ class ModifyMyInfoHandler(BaseHandler):
         try:
             exist = yield from self.db_op.check_room_exist(j["room"]["building_id"], j["room"]["room_name"], **params)
             if exist == -1:
-                try:
-                    yield from self.db_op.add_room(j["room"]["building_id"], j["room"]["room_name"], j["room"]["floor"][0], **params)
-                except:
-                    yield from self.db_op.add_room(j["room"]["building_id"], j["room"]["room_name"], j["room"]["room_name"][0], **params)
+                yield from self.db_op.add_room(j["room"]["building_id"], j["room"]["room_name"], str(j["room"]["building_id"])[0], **params)
                 exist = yield from self.db_op.check_room_exist(j["room"]["building_id"], j["room"]["room_name"], **params)
             yield from self.db_op.modify_my_info(uid, "room_id", exist, **params)
         except:
@@ -311,12 +180,10 @@ class ModifyMyInfoHandler(BaseHandler):
                 pass
         for attribute in p_enable:
             try:
-                if j[attribute] == "true":
+                if j[attribute]:
                     yield from self.db_op.modify_my_info(uid, attribute, 1, **params)
-                elif j[attribute] == "false":
-                    yield from self.db_op.modify_my_info(uid, attribute, 0, **params)
                 else:
-                    pass
+                    yield from self.db_op.modify_my_info(uid, attribute, 0, **params)
             except:
                 pass
         self.res['data'] = "Done!"
@@ -324,22 +191,6 @@ class ModifyMyInfoHandler(BaseHandler):
 
     def options(self, **params):
         self.res['data'] = "Options OK!"
-        self.write_json()
-
-class ListUserInfoHandler(BaseHandler):
-    @gen.coroutine
-    @auth_login
-    @refresh_token
-    def get(self, uid, **params):
-        self.res['data'] = yield from self.db_op.list_user_info(self.get_method()['type'], uid, **params)
-        self.write_json()
-
-class SearchHandler(BaseHandler):
-    @gen.coroutine
-    @auth_login
-    @refresh_token
-    def get(self, **params):
-        self.res['data'] = []
         self.write_json()
 
 class SearchRoomHandler(BaseHandler):
@@ -352,9 +203,10 @@ class SearchRoomHandler(BaseHandler):
             if arg.isdigit() and len(arg) <= 5:
                 room_id = yield from self.db_op.check_room_exist(building_id, arg, **params)
                 search_param = [
-                    ("room_id", room_id,)
+                    ("s.room_id", room_id,),
+                    ("room_id_enable", 1)
                 ]
-                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], search_param, **params)
+                self.res['data'] = yield from self.db_op.search(search_param, **params)
             else:
                 self.res['data'] = []
         except:
@@ -371,9 +223,10 @@ class SearchClassHandler(BaseHandler):
             if check_safe(arg, 2):
                 search_param = [
                     ("student_name_fuzzy", arg,),
-                    ("class_id", class_id,)
+                    ("class_id", class_id,),
+                    ("class_id_enable", 1)
                 ]
-                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], search_param, **params)
+                self.res['data'] = yield from self.db_op.search(search_param, **params)
             else:
                 self.res['data'] = []
         except:
@@ -391,7 +244,7 @@ class SearchNameAccurateHandler(BaseHandler):
                 search_param = [
                     ("student_name_accurate", arg,)
                 ]
-                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], search_param, **params)
+                self.res['data'] = yield from self.db_op.search(search_param, **params)
             else:
                 self.res['data'] = []
         except:
@@ -409,7 +262,7 @@ class SearchNameFuzzyHandler(BaseHandler):
                 search_param = [
                     ("student_name_fuzzy", arg,)
                 ]
-                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], search_param, **params)
+                self.res['data'] = yield from self.db_op.search(search_param, **params)
             else:
                 self.res['data'] = []
         except:
@@ -425,9 +278,10 @@ class SearchStudentIDHandler(BaseHandler):
             arg = self.get_arguments("arg")[0]
             if arg.isdigit() and len(arg) <= 10:
                 search_param = [
-                    ("student_id", arg,)
+                    ("student_id", arg,),
+                    ("student_id_enable", 1)
                 ]
-                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], search_param, **params)
+                self.res['data'] = yield from self.db_op.search(search_param, **params)
             else:
                 self.res['data'] = []
         except:
@@ -443,9 +297,10 @@ class SearchStudentNicknameHandler(BaseHandler):
             arg = self.get_arguments("arg")[0]
             if check_safe(arg, 2):
                 search_param = [
-                    ("student_nickname", arg,)
+                    ("student_nickname", arg,),
+                    ("student_nickname_enable", 1)
                 ]
-                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], search_param, **params)
+                self.res['data'] = yield from self.db_op.search(search_param, **params)
             else:
                 self.res['data'] = []
         except:
@@ -461,9 +316,10 @@ class SearchEmailHandler(BaseHandler):
             arg = self.get_arguments("arg")[0]
             if check_safe(arg, 2) and arg.find("@") != -1:
                 search_param = [
-                    ("email", arg,)
+                    ("email", arg,),
+                    ("email_enable", 1)
                 ]
-                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], search_param, **params)
+                self.res['data'] = yield from self.db_op.search(search_param, **params)
             else:
                 self.res['data'] = []
         except:
@@ -479,38 +335,13 @@ class SearchFacebookIDHandler(BaseHandler):
             arg = self.get_arguments("arg")[0]
             if arg.isdigit() and len(arg) <= 20:
                 search_param = [
-                    ("facebook_id", arg,)
+                    ("facebook_id", arg,),
+                    ("facebook_id_enable", 1)
                 ]
-                self.res['data'] = yield from self.db_op.search(self.get_method()['type'], search_param, **params)
+                self.res['data'] = yield from self.db_op.search(search_param, **params)
             else:
                 self.res['data'] = []
         except:
-            self.res['data'] = []
-        self.write_json()
-
-class SearchArgHandler(BaseHandler):
-    @gen.coroutine
-    @auth_login
-    @refresh_token
-    def get(self, **params):
-        search_param = []
-        possible_param = ["student_id", "student_name", "student_nickname", "class_id", "email", "facebook_id"]
-        for param in possible_param:
-            try:
-                search_param.append((param, self.get_arguments(param)[0],))
-            except:
-                pass
-        if search_param != []:
-            try:
-                fuzzy = self.get_arguments("fuzzy")[0]
-            except:
-                fuzzy = False
-                pass
-            if fuzzy == "true" and self.get_arguments("student_name") != "":
-                self.res['data'] = yield from self.db_op.search_arg(self.get_method()['type'], True, search_param, **params)
-            else:
-                self.res['data'] = yield from self.db_op.search_arg(self.get_method()['type'], False, search_param, **params)
-        else:
             self.res['data'] = []
         self.write_json()
 

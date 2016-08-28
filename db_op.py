@@ -88,45 +88,6 @@ class DB_OP_Dorm:
     def __init__(self, db):
         self.db = db
 
-    def log(self, method, uid, route):
-        try:
-            yield self.db.send(
-                "INSERT INTO log (method, uid, route) VALUES (%s, %s, %s)", (method, uid, route,)
-            )
-        except:
-            print("Logging Error!")
-
-    def hide_disabled_data(self, u_data):
-        data = []
-        for user in u_data:
-            item = {
-                "uid": user['uid'],
-                "student_name": user['student_name'],
-                "student_nickname": "",
-                "student_id": "",
-                "class_id": "",
-                "email": "",
-                "facebook_id": "",
-                "detail": "",
-                "slogan": ""
-            }
-            if user["student_nickname_enable"]==1:
-                item["student_nickname"] = user["student_nickname"]
-            if user["student_id_enable"]==1:
-                item["student_id"] = user["student_id"]
-            if user["class_id_enable"]==1:
-                item["class_id"] = user["class_id"]
-            if user["email_enable"]==1:
-                item["email"] = user["email"]
-            if user["facebook_id_enable"]==1:
-                item["facebook_id"] = user["facebook_id"]
-            if user["detail_enable"]==1:
-                item["detail"] = user["detail"]
-            if user["slogan_enable"]==1:
-                item["slogan"] = user["slogan"]
-            data.append(item)
-        return data
-
     def find_uid(self, method, oid="", **params):
         if method == "d2":
             data = json.loads(oid)
@@ -183,54 +144,11 @@ class DB_OP_Dorm:
         )
         return data
 
-    def list_floor_by_building_id(self, building_id, **params):
-        data = yield self.db.get(
-            "SELECT DISTINCT floor FROM room where building_id = %s order by floor ASC", (building_id,)
-        )
-        return data
-
     def list_all_class(self, **params):
         data = yield self.db.get(
             "SELECT * FROM class ORDER BY class_id ASC", ()
         )
         return data
-
-    def list_all_room(self, **params):
-        data = yield self.db.get(
-            "SELECT * FROM room ORDER BY room_id ASC", ()
-        )
-        return data
-
-    def list_all_room_by_room_id(self, room_id, **params):
-        data = yield self.db.get(
-            "SELECT * FROM room WHERE room_id = %s", (room_id,)
-        )
-        return data
-
-    def list_all_room_by_building(self, building_id, **params):
-        data = yield self.db.get(
-            "SELECT * FROM room WHERE building_id = %s ORDER BY room_id ASC", (building_id,)
-        )
-        return data
-
-    def list_all_room_by_building_floor(self, building_id, floor, **params):
-        data = yield self.db.get(
-            "SELECT * FROM room WHERE building_id = %s AND floor = %s ORDER BY room_id ASC", (building_id, floor,)
-        )
-        return data
-
-    def list_all_user_by_room(self, method, room_id, **params):
-        if method == "d2":
-            data = yield self.db.get(
-                "SELECT * FROM student WHERE enable = 1 AND room_id = %s ORDER BY uid ASC", (room_id,)
-            )
-        elif method == "fb":
-            data = yield self.db.get(
-                "SELECT * FROM student WHERE enable = 1 AND type=\'fb\' AND room_id = %s ORDER BY uid ASC", (room_id,)
-            )
-        else:
-            data = []
-        return self.hide_disabled_data(data)
 
     def check_room_exist(self, building_id, room_name, **params):
         data = yield self.db.get(
@@ -243,18 +161,12 @@ class DB_OP_Dorm:
 
     def add_room(self, building_id, room_name, floor, **params):
         yield self.db.send(
-            "INSERT INTO room (room_name, building_id, floor) VALUES (%s, %s, %s)", (room_name, building_id, floor,)
+            "INSERT INTO room (building_id, room_name, floor) VALUES (%s, %s, %s)", (building_id, room_name, floor,)
         )
-
-    def list_usage_people(self, **params):
-        data = yield self.db.get(
-            "SELECT count(*) as count FROM student  WHERE enable = 1", ()
-        )
-        return data
 
     def list_my_info(self, uid, **params):
         data = yield self.db.get(
-            "SELECT * FROM student WHERE uid = %s", (uid,)
+            "SELECT * FROM student s, room r WHERE uid = %s AND s.room_id = r.room_id", (uid,)
         )
         try:
             del data[0]['account']
@@ -267,24 +179,7 @@ class DB_OP_Dorm:
             "UPDATE student SET " + attribute + " = %s WHERE uid = %s", (data, uid,)
         )
 
-    def list_user_info(self, method, uid, **params):
-        if method == "d2":
-            data = yield self.db.get(
-                "SELECT * FROM student WHERE enable = 1 AND uid = %s", (uid,)
-            )
-        elif method == "fb":
-            data = yield self.db.get(
-                "SELECT * FROM student WHERE enable = 1 AND type=\'fb\' AND uid = %s", (uid,)
-            )
-        else:
-            data = [{}]
-        try:
-            del data[0]['account']
-        except:
-            data = [{}]
-        return data[0]
-
-    def search(self, method, search_param, **params):
+    def search(self, search_param, **params):
         q = ""
         q_param = ()
         for p in search_param:
@@ -297,36 +192,49 @@ class DB_OP_Dorm:
             else:
                 q = q + " AND " + p[0] + " = %s"
                 q_param = q_param + (p[1], )
-        if method == "d2":
-            data = yield self.db.get(
-                "SELECT * FROM student WHERE enable = 1" + q, q_param
-            )
-        elif method == "fb":
-            data = yield self.db.get(
-                "SELECT * FROM student WHERE enable = 1 AND type=\'fb\'" + q, q_param
-            )
-        else:
-            data = []
-        return self.hide_disabled_data(data)
+        u_data = yield self.db.get(
+            "SELECT * FROM student s, room r WHERE s.room_id = r.room_id AND enable = 1" + q, q_param
+        )
+        data = []
+        USER = {
+            "uid": "",
+            "student_id": "",
+            "student_name": "",
+            "student_nickname": "",
+            "class_id": "",
+            "building_id": "",
+            "room_name": "",
+            "email": "",
+            "facebook_id": "",
+            "slogan": "",
+            "detail": "",
+        }
+        for user in u_data:
+            single_user = USER
+            single_user['uid'] = user['uid']
+            single_user['student_name'] = user['student_name']
+            if user['student_id_enable']==1:
+                single_user['student_id'] = user['student_id']
+            if user['student_nickname_enable']==1:
+                single_user['student_nickname'] = user['student_nickname']
+            if user['class_id_enable']==1:
+                single_user['class_id'] = user['class_id']
+            if user['room_id_enable']==1:
+                single_user['building_id'] = user['building_id']
+                single_user['room_name'] = user['room_name']
+            if user['email_enable']==1:
+                single_user['email'] = user['email']
+            if user['facebook_id_enable']==1:
+                single_user['facebook_id'] = user['facebook_id']
+            if user['slogan_enable']==1:
+                single_user['slogan'] = user['slogan']
+            if user['detail_enable']==1:
+                single_user['detail'] = user['detail']
+            data.append(single_user)
+        return data
 
-    def search_arg(self, method, fuzzy, param, **params):
-        q = ""
-        q_param = ()
-        for p in param:
-            if p[0] == "student_name" and fuzzy:
-                q = q + " AND " + p[0] + " like %s"
-                q_param = q_param + ("%"+p[1]+"%",)
-            else:
-                q = q + " AND " + p[0] + " = %s"
-                q_param = q_param + (p[1], )
-        if method == "d2":
-            data = yield self.db.get(
-                "SELECT * FROM student WHERE enable = 1" + q, q_param
-            )
-        elif method == "fb":
-            data = yield self.db.get(
-                "SELECT * FROM student WHERE enable = 1 AND type=\'fb\'" + q, q_param
-            )
-        else:
-            data = []
-        return self.hide_disabled_data(data)
+    def list_usage_people(self, **params):
+        data = yield self.db.get(
+            "SELECT count(*) as count FROM student  WHERE enable = 1", ()
+        )
+        return data
