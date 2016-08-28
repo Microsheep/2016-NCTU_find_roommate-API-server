@@ -42,7 +42,7 @@ if __name__ == '__main__':
         ('/usage/people/', UsagePeopleHandler, args),
         # Static
         ('/static/(.*)', tornado.web.StaticFileHandler, {'path': './static'}),
-    ], debug=True)
+    ], debug=False)
 
     print("Server running at 0.0.0.0:" + str(c.API_SERVER_PORT))
     app.listen(c.API_SERVER_PORT)

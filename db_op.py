@@ -44,9 +44,9 @@ class DB:
             param params: actual query parameters
             return: None
         """
-        print(datetime.now())
-        print("DB_SEND: "+query)
-        print("INPUT: "+str(params))
+        #print(datetime.now())
+        #print("DB_SEND: "+query)
+        #print("INPUT: "+str(params))
         with (yield self.pool.Connection()) as conn:
             try:
                 with conn.cursor() as cursor:
@@ -65,9 +65,9 @@ class DB:
             param dry_output: (bool) switch output style
             return: If dry_output True - output tuple of tuples, otherwise list of dicts
         """
-        print(datetime.now())
-        print("DB_GET: "+query)
-        print("INPUT: "+str(params))
+        #print(datetime.now())
+        #print("DB_GET: "+query)
+        #print("INPUT: "+str(params))
         with (yield self.pool.Connection()) as conn:
             with conn.cursor() as cursor:
                 yield cursor.execute(query, params)
@@ -179,7 +179,7 @@ class DB_OP_Dorm:
             "UPDATE student SET " + attribute + " = %s WHERE uid = %s", (data, uid,)
         )
 
-    def search(self, search_param, **params):
+    def search(self, search_param, log_data, **params):
         q = ""
         q_param = ()
         for p in search_param:
@@ -231,6 +231,12 @@ class DB_OP_Dorm:
             if user['detail_enable']==1:
                 single_user['detail'] = user['detail']
             data.append(single_user)
+        try:
+            yield self.db.send(
+                "INSERT INTO log (method, uid, route) VALUES (%s, %s, %s)", (log_data['type'], log_data['uid'], str(search_param),)
+            )
+        except:
+            pass
         return data
 
     def list_usage_people(self, **params):

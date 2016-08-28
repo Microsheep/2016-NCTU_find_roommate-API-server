@@ -167,7 +167,7 @@ class ModifyMyInfoHandler(BaseHandler):
         try:
             exist = yield from self.db_op.check_room_exist(j["room"]["building_id"], j["room"]["room_name"], **params)
             if exist == -1:
-                yield from self.db_op.add_room(j["room"]["building_id"], j["room"]["room_name"], str(j["room"]["building_id"])[0], **params)
+                yield from self.db_op.add_room(j["room"]["building_id"], j["room"]["room_name"], str(j["room"]["room_name"])[0], **params)
                 exist = yield from self.db_op.check_room_exist(j["room"]["building_id"], j["room"]["room_name"], **params)
             yield from self.db_op.modify_my_info(uid, "room_id", exist, **params)
         except:
@@ -206,7 +206,7 @@ class SearchRoomHandler(BaseHandler):
                     ("s.room_id", room_id,),
                     ("room_id_enable", 1)
                 ]
-                self.res['data'] = yield from self.db_op.search(search_param, **params)
+                self.res['data'] = yield from self.db_op.search(search_param, self.get_method(), **params)
             else:
                 self.res['data'] = []
         except:
@@ -226,7 +226,7 @@ class SearchClassHandler(BaseHandler):
                     ("class_id", class_id,),
                     ("class_id_enable", 1)
                 ]
-                self.res['data'] = yield from self.db_op.search(search_param, **params)
+                self.res['data'] = yield from self.db_op.search(search_param, self.get_method(), **params)
             else:
                 self.res['data'] = []
         except:
@@ -244,7 +244,7 @@ class SearchNameAccurateHandler(BaseHandler):
                 search_param = [
                     ("student_name_accurate", arg,)
                 ]
-                self.res['data'] = yield from self.db_op.search(search_param, **params)
+                self.res['data'] = yield from self.db_op.search(search_param, self.get_method(), **params)
             else:
                 self.res['data'] = []
         except:
@@ -262,7 +262,7 @@ class SearchNameFuzzyHandler(BaseHandler):
                 search_param = [
                     ("student_name_fuzzy", arg,)
                 ]
-                self.res['data'] = yield from self.db_op.search(search_param, **params)
+                self.res['data'] = yield from self.db_op.search(search_param, self.get_method(), **params)
             else:
                 self.res['data'] = []
         except:
@@ -281,7 +281,7 @@ class SearchStudentIDHandler(BaseHandler):
                     ("student_id", arg,),
                     ("student_id_enable", 1)
                 ]
-                self.res['data'] = yield from self.db_op.search(search_param, **params)
+                self.res['data'] = yield from self.db_op.search(search_param, self.get_method(), **params)
             else:
                 self.res['data'] = []
         except:
@@ -300,7 +300,7 @@ class SearchStudentNicknameHandler(BaseHandler):
                     ("student_nickname", arg,),
                     ("student_nickname_enable", 1)
                 ]
-                self.res['data'] = yield from self.db_op.search(search_param, **params)
+                self.res['data'] = yield from self.db_op.search(search_param, self.get_method(), **params)
             else:
                 self.res['data'] = []
         except:
@@ -319,7 +319,7 @@ class SearchEmailHandler(BaseHandler):
                     ("email", arg,),
                     ("email_enable", 1)
                 ]
-                self.res['data'] = yield from self.db_op.search(search_param, **params)
+                self.res['data'] = yield from self.db_op.search(search_param, self.get_method(), **params)
             else:
                 self.res['data'] = []
         except:
@@ -338,7 +338,7 @@ class SearchFacebookIDHandler(BaseHandler):
                     ("facebook_id", arg,),
                     ("facebook_id_enable", 1)
                 ]
-                self.res['data'] = yield from self.db_op.search(search_param, **params)
+                self.res['data'] = yield from self.db_op.search(search_param, self.get_method(), **params)
             else:
                 self.res['data'] = []
         except:
